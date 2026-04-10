@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "driver/gpio.h"
-#include "driver/i2c.h"
+#include "driver/i2c_types.h"
 
 #define APP_WIFI_SSID ""
 #define APP_WIFI_PASSWORD ""

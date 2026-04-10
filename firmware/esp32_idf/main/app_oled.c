@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "driver/i2c.h"
+#include "driver/i2c_master.h"
 #include "esp_check.h"
 
 #include "app_config.h"
@@ -18,6 +18,8 @@ static uint8_t s_oled_last_buffer[OLED_BUF_SIZE];
 static bool s_oled_ready = false;
 static bool s_oled_last_valid = false;
 static uint8_t s_oled_addr = APP_OLED_I2C_ADDRESS;
+static i2c_master_bus_handle_t s_oled_bus = NULL;
+static i2c_master_dev_handle_t s_oled_dev = NULL;
 #define OLED_SH1106_COL_OFFSET 2
 
 static const char *oled_state_text(app_state_t state)
@@ -71,10 +73,31 @@ static const uint8_t *glyph_for_char(char c)
     }
 }
 
+static esp_err_t oled_select_device(uint8_t addr)
+{
+    i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = addr,
+        .scl_speed_hz = 400000,
+    };
+
+    if (s_oled_dev != NULL) {
+        ESP_RETURN_ON_ERROR(i2c_master_bus_rm_device(s_oled_dev), "oled", "remove previous device failed");
+        s_oled_dev = NULL;
+    }
+
+    ESP_RETURN_ON_ERROR(i2c_master_bus_add_device(s_oled_bus, &dev_cfg, &s_oled_dev), "oled", "add i2c device failed");
+    s_oled_addr = addr;
+    return ESP_OK;
+}
+
 static esp_err_t oled_send_command(uint8_t cmd)
 {
     uint8_t buffer[2] = {0x00, cmd};
-    return i2c_master_write_to_device(APP_I2C_PORT, s_oled_addr, buffer, sizeof(buffer), pdMS_TO_TICKS(100));
+    if (s_oled_dev == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    return i2c_master_transmit(s_oled_dev, buffer, sizeof(buffer), 100);
 }
 
 static esp_err_t oled_send_data(const uint8_t *data, size_t len)
@@ -84,7 +107,7 @@ static esp_err_t oled_send_data(const uint8_t *data, size_t len)
     while (len > 0) {
         size_t n = len > 16 ? 16 : len;
         memcpy(&chunk[1], data, n);
-        ESP_RETURN_ON_ERROR(i2c_master_write_to_device(APP_I2C_PORT, s_oled_addr, chunk, n + 1, pdMS_TO_TICKS(100)), "oled", "data send failed");
+        ESP_RETURN_ON_ERROR(i2c_master_transmit(s_oled_dev, chunk, n + 1, 100), "oled", "data send failed");
         data += n;
         len -= n;
     }
@@ -204,25 +227,22 @@ static esp_err_t oled_flush(void)
 
 esp_err_t app_oled_init(void)
 {
-    i2c_config_t cfg = {
-        .mode = I2C_MODE_MASTER,
+    i2c_master_bus_config_t bus_cfg = {
+        .i2c_port = APP_I2C_PORT,
         .sda_io_num = PIN_I2C_SDA,
         .scl_io_num = PIN_I2C_SCL,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = 400000,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
     };
 
-    esp_err_t err;
-
-    ESP_RETURN_ON_ERROR(i2c_param_config(APP_I2C_PORT, &cfg), "oled", "i2c param failed");
-    err = i2c_driver_install(APP_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
-    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-        return err;
+    if (s_oled_bus == NULL) {
+        ESP_RETURN_ON_ERROR(i2c_new_master_bus(&bus_cfg, &s_oled_bus), "oled", "new i2c master bus failed");
     }
-    s_oled_addr = APP_OLED_I2C_ADDRESS;
+
+    ESP_RETURN_ON_ERROR(oled_select_device(APP_OLED_I2C_ADDRESS), "oled", "select default address failed");
     if (oled_send_command(0xAE) != ESP_OK) {
-        s_oled_addr = 0x3D;
+        ESP_RETURN_ON_ERROR(oled_select_device(0x3D), "oled", "select fallback address failed");
         ESP_RETURN_ON_ERROR(oled_send_command(0xAE), "oled", "display off failed");
     }
 #if APP_OLED_DRIVER_SH1106
