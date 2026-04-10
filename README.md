@@ -40,13 +40,9 @@
 
 ## 当前输出
 
-- 文档导航：[docs/README.md](docs/README.md)
-- 总体方案：[docs/方案设计.md](docs/%E6%96%B9%E6%A1%88%E8%AE%BE%E8%AE%A1.md)
-- 物料清单：[docs/物料清单.md](docs/%E7%89%A9%E6%96%99%E6%B8%85%E5%8D%95.md)
-- 详细设计：[docs/模块接线与控制细化.md](docs/%E6%A8%A1%E5%9D%97%E6%8E%A5%E7%BA%BF%E4%B8%8E%E6%8E%A7%E5%88%B6%E7%BB%86%E5%8C%96.md)
-- 执行器分版建议：[hardware/执行器驱动分版建议.md](hardware/%E6%89%A7%E8%A1%8C%E5%99%A8%E9%A9%B1%E5%8A%A8%E5%88%86%E7%89%88%E5%BB%BA%E8%AE%AE.md)
-- 联调与验收清单：[docs/联调与验收测试清单.md](docs/%E8%81%94%E8%B0%83%E4%B8%8E%E9%AA%8C%E6%94%B6%E6%B5%8B%E8%AF%95%E6%B8%85%E5%8D%95.md)
-- V1 发布清单：[docs/V1发布清单.md](docs/V1%E5%8F%91%E5%B8%83%E6%B8%85%E5%8D%95.md)
+- 文档总入口（已去重）：[docs/README.md](docs/README.md)
+- 软件架构文档（主文档）：[docs/软件架构设计.md](docs/%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1.md)
+- 软件架构文档（HTML 版）：[docs/软件架构设计.html](docs/%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1.html)
 
 ## 快速开始（ESP-IDF 主线）
 

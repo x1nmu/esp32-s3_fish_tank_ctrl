@@ -50,6 +50,8 @@ runtime_data_t g_runtime = {
     .sensor_diff_alarm = APP_DEFAULT_SENSOR_DIFF_ALARM,
     .control_temp = NAN,
     .sensor_diff = NAN,
+    .sensor_a = { .temperature = NAN, .last_raw_temperature = NAN },
+    .sensor_b = { .temperature = NAN, .last_raw_temperature = NAN },
     .state = APP_STATE_INIT,
     .buzzer_enabled = APP_DEFAULT_BUZZER_ENABLED,
     .last_fault_code = APP_FAULT_NONE,
@@ -298,6 +300,10 @@ void app_core_process_pending_commands(void)
             case APP_CMD_CLEAR_STATS:
                 app_core_clear_runtime_statistics();
                 app_core_pulse_buzzer(APP_BUZZ_PULSE_MS);
+                break;
+
+            case APP_CMD_FACTORY_RESET:
+                app_core_factory_reset();
                 break;
 
             default:
@@ -877,6 +883,7 @@ void app_core_handle_buttons(void)
     bool down_pressed;
     bool fault_reset_combo;
     bool stats_reset_combo;
+    bool factory_reset_hold;
     bool adjusted;
 
     now_ms = app_millis();
@@ -891,6 +898,8 @@ void app_core_handle_buttons(void)
 
     fault_reset_combo = set_pressed && up_pressed && !down_pressed;
     stats_reset_combo = set_pressed && down_pressed && !up_pressed;
+    factory_reset_hold = set_pressed && !up_pressed && !down_pressed &&
+                         (now_ms - g_runtime.key_set_pressed_ms) >= APP_FACTORY_RESET_LONG_PRESS_MS;
 
     if (set_pressed && !g_runtime.key_set_prev) {
         g_runtime.key_set_pressed_ms = now_ms;
@@ -915,6 +924,9 @@ void app_core_handle_buttons(void)
         } else if (stats_reset_combo) {
             app_core_clear_runtime_statistics();
             app_core_pulse_buzzer(APP_BUZZ_PULSE_MS * 2U);
+            g_runtime.maintenance_combo_handled = true;
+        } else if (factory_reset_hold) {
+            app_core_factory_reset();
             g_runtime.maintenance_combo_handled = true;
         }
     }
@@ -1094,6 +1106,76 @@ void app_core_clear_runtime_statistics(void)
     }
 
     app_log_event("Runtime statistics cleared by user");
+}
+
+void app_core_factory_reset(void)
+{
+    nvs_handle_t handle;
+    esp_err_t err;
+    bool nvs_cleared = false;
+
+    stop_all_outputs();
+    app_core_set_buzzer(false);
+    g_runtime.buzzer_off_ms = 0;
+
+    if (nvs_open("fish-tank", NVS_READWRITE, &handle) == ESP_OK) {
+        err = nvs_erase_all(handle);
+        if (err == ESP_OK) {
+            err = nvs_commit(handle);
+            nvs_cleared = err == ESP_OK;
+        }
+        nvs_close(handle);
+    }
+
+    g_runtime.setpoint = APP_DEFAULT_SETPOINT;
+    g_runtime.hysteresis = APP_DEFAULT_HYSTERESIS;
+    g_runtime.sensor_diff_alarm = APP_DEFAULT_SENSOR_DIFF_ALARM;
+    g_runtime.buzzer_enabled = APP_DEFAULT_BUZZER_ENABLED;
+    strlcpy(g_runtime.wifi_ssid, APP_WIFI_SSID, sizeof(g_runtime.wifi_ssid));
+    strlcpy(g_runtime.wifi_password, APP_WIFI_PASSWORD, sizeof(g_runtime.wifi_password));
+    g_runtime.wifi_reconnect_requested = true;
+
+    g_runtime.sensor_a.temperature = NAN;
+    g_runtime.sensor_a.last_raw_temperature = NAN;
+    g_runtime.sensor_a.valid = false;
+    g_runtime.sensor_a.fail_count = 0;
+    g_runtime.sensor_a.recover_count = 0;
+    g_runtime.sensor_b.temperature = NAN;
+    g_runtime.sensor_b.last_raw_temperature = NAN;
+    g_runtime.sensor_b.valid = false;
+    g_runtime.sensor_b.fail_count = 0;
+    g_runtime.sensor_b.recover_count = 0;
+    g_runtime.control_temp = NAN;
+    g_runtime.sensor_diff = NAN;
+
+    memset(&g_runtime.alarms, 0, sizeof(g_runtime.alarms));
+    g_runtime.fault_latched = false;
+    g_runtime.state = APP_STATE_IDLE;
+    set_last_fault(APP_FAULT_NONE);
+
+    g_runtime.total_heat_on_ms = 0;
+    g_runtime.total_cool_on_ms = 0;
+    g_runtime.alarm_count = 0;
+    g_runtime.degraded_count = 0;
+    g_runtime.fault_stop_count = 0;
+    g_runtime.heat_relay_switch_count = 0;
+    g_runtime.cool_relay_switch_count = 0;
+    g_runtime.relay_stats_dirty = false;
+    g_runtime.settings_dirty = false;
+    g_runtime.last_stats_update_ms = app_millis();
+    update_relay_wear_warnings();
+
+    g_runtime.key_set_combo_seen = false;
+    g_runtime.key_up_long_adjust_active = false;
+    g_runtime.key_down_long_adjust_active = false;
+    g_runtime.fast_adjust_pending_commit = false;
+
+    memset(g_runtime.event_log, 0, sizeof(g_runtime.event_log));
+    g_runtime.event_log_count = 0;
+    g_runtime.event_log_head = 0;
+
+    app_log_event(nvs_cleared ? "Factory reset completed" : "Factory reset completed (NVS erase partial)");
+    app_core_pulse_buzzer(APP_BUZZ_PULSE_MS * 3U);
 }
 
 static esp_err_t init_pins(void)

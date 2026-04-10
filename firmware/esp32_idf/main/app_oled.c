@@ -117,11 +117,47 @@ static void oled_draw_char(int x, int y, char c)
     }
 }
 
+static void oled_draw_char_scaled(int x, int y, char c, int scale)
+{
+    const uint8_t *glyph = glyph_for_char(c);
+
+    if (scale <= 1) {
+        oled_draw_char(x, y, c);
+        return;
+    }
+
+    for (int col = 0; col < 5; ++col) {
+        for (int row = 0; row < 7; ++row) {
+            if (((glyph[col] >> row) & 0x01U) == 0U) {
+                continue;
+            }
+            for (int sx = 0; sx < scale; ++sx) {
+                for (int sy = 0; sy < scale; ++sy) {
+                    oled_draw_pixel(x + col * scale + sx, y + row * scale + sy, true);
+                }
+            }
+        }
+    }
+}
+
 static void oled_draw_string(int x, int y, const char *text)
 {
     while (*text != '\0') {
         oled_draw_char(x, y, *text++);
         x += 6;
+    }
+}
+
+static void oled_draw_string_scaled(int x, int y, const char *text, int scale)
+{
+    if (scale <= 1) {
+        oled_draw_string(x, y, text);
+        return;
+    }
+
+    while (*text != '\0') {
+        oled_draw_char_scaled(x, y, *text++, scale);
+        x += 6 * scale;
     }
 }
 
@@ -267,38 +303,42 @@ esp_err_t app_oled_render_status(const runtime_data_t *runtime, const char *ip_t
 {
     char line[32];
     char value[16];
+    bool fault_page;
+    (void)ip_text;
 
     if (!s_oled_ready) {
         return ESP_ERR_INVALID_STATE;
     }
 
     oled_clear_buffer();
+    fault_page = (runtime->last_fault_code != APP_FAULT_NONE) || runtime->fault_latched;
 
     oled_format_float(value, sizeof(value), runtime->control_temp, 1);
-    snprintf(line, sizeof(line), "TC:%sC SET:", value);
-    oled_draw_string(0, 0, line);
+    snprintf(line, sizeof(line), "%sC", value);
+    oled_draw_string_scaled(0, 0, line, 2);
+
     oled_format_float(value, sizeof(value), runtime->setpoint, 1);
-    oled_draw_string(78, 0, value);
+    if (!fault_page) {
+        snprintf(line, sizeof(line), "SET:%s", value);
+        oled_draw_string(0, 20, line);
+        snprintf(line, sizeof(line), "MODE:%s", oled_state_text(runtime->state));
+        oled_draw_string(0, 32, line);
+        snprintf(line, sizeof(line), "H:%s C:%s", runtime->heat_on ? "ON" : "OFF", runtime->cool_on ? "ON" : "OFF");
+        oled_draw_string(0, 44, line);
+    } else {
+        snprintf(line, sizeof(line), "FLT:%s", runtime->last_fault_text);
+        oled_draw_string(0, 20, line);
+        oled_format_float(value, sizeof(value), runtime->sensor_a.temperature, 1);
+        snprintf(line, sizeof(line), "A:%s", value);
+        oled_draw_string(0, 32, line);
+        oled_format_float(value, sizeof(value), runtime->sensor_b.temperature, 1);
+        snprintf(line, sizeof(line), "B:%s", value);
+        oled_draw_string(62, 32, line);
+        oled_format_float(value, sizeof(value), runtime->setpoint, 1);
+        snprintf(line, sizeof(line), "SET:%s", value);
+        oled_draw_string(0, 44, line);
+    }
 
-    snprintf(line, sizeof(line), "MODE:%s", oled_state_text(runtime->state));
-    oled_draw_string(0, 12, line);
-    snprintf(line, sizeof(line), "H%s C%s", runtime->heat_on ? "ON" : "OF", runtime->cool_on ? "ON" : "OF");
-    oled_draw_string(78, 12, line);
-
-    oled_format_float(value, sizeof(value), runtime->sensor_a.temperature, 1);
-    snprintf(line, sizeof(line), "T1:%s", value);
-    oled_draw_string(0, 24, line);
-    oled_format_float(value, sizeof(value), runtime->sensor_b.temperature, 1);
-    snprintf(line, sizeof(line), "T2:%s", value);
-    oled_draw_string(64, 24, line);
-
-    snprintf(line, sizeof(line), "FLT:%s", runtime->last_fault_text);
-    oled_draw_string(0, 36, line);
-
-    snprintf(line, sizeof(line), "IP:%s", ip_text ? ip_text : "--");
-    oled_draw_string(0, 48, line);
-
-    oled_draw_string(0, 56, runtime->fault_latched ? "HOLD SET UP CLRFLT" : "UPDN SET  HOLD FAST");
     return oled_flush();
 }
 

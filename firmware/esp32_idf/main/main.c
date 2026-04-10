@@ -12,7 +12,7 @@
 #include "app_network.h"
 
 static const char *TAG = "fish_tank_idf";
-
+#if CONFIG_DEBUG_FLASH_PSRAM_ENABLE
 static void app_log_effective_hw_config(void)
 {
     uint32_t flash_size = 0;
@@ -69,7 +69,7 @@ static void app_log_effective_hw_config(void)
         it = esp_partition_next(it);
     }
 }
-
+#endif
 static void app_control_task(void *arg)
 {
     (void)arg;
@@ -148,7 +148,9 @@ void app_main(void)
     ESP_ERROR_CHECK(err);
 
     ESP_LOGI(TAG, "Booting fish tank controller (ESP-IDF)");
+    #if CONFIG_DEBUG_FLASH_PSRAM_ENABLE
     app_log_effective_hw_config();
+    #endif
     ESP_ERROR_CHECK(app_core_init());
     ESP_ERROR_CHECK(app_network_init());
 

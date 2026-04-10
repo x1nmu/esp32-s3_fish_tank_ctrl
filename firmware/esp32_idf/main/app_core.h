@@ -16,6 +16,7 @@ typedef enum {
 	APP_CMD_SET_SETPOINT,
 	APP_CMD_CLEAR_FAULT,
 	APP_CMD_CLEAR_STATS,
+	APP_CMD_FACTORY_RESET,
 } app_cmd_type_t;
 
 typedef struct {
@@ -58,5 +59,6 @@ void app_core_set_buzzer(bool enabled);
 void app_core_pulse_buzzer(uint32_t duration_ms);
 void app_core_clear_fault_latch(void);
 void app_core_clear_runtime_statistics(void);
+void app_core_factory_reset(void);
 
 #endif

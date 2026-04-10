@@ -260,53 +260,41 @@ static void build_root_page(char *buffer, size_t size)
     size_t offset = 0;
 
     append_text(buffer, size, &offset, "<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>");
-    append_text(buffer, size, &offset, "<title>Fish Tank Controller</title>");
-    append_text(buffer, size, &offset, "<style>body{font-family:Segoe UI,Arial,sans-serif;background:#eef6f7;color:#102a43;padding:20px;}"
-                                     ".card{max-width:680px;margin:auto;background:#fff;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(16,42,67,.12);}"
-                                     ".grid{display:grid;grid-template-columns:repeat(2,minmax(140px,1fr));gap:12px;}"
-                                     ".item{background:#f0f4f8;border-radius:12px;padding:12px;}small{display:block;color:#627d98;}strong{font-size:18px;}"
-                                     ".notice{margin:14px 0;padding:12px;border-radius:12px;background:#fff3cd;color:#7c5700;}"
-                                     ".entry{margin:12px 0;padding:12px;border-radius:12px;background:#e6fffa;color:#0f5132;border:1px solid #b7efe2;}"
-                                     ".entry code{font-family:Consolas,monospace;background:#f5f7fa;padding:1px 4px;border-radius:4px;}"
+    append_text(buffer, size, &offset, "<title>鱼缸温控器_x1nmu</title>");
+    append_text(buffer, size, &offset, "<style>body{font-family:Segoe UI,Arial,sans-serif;background:#f4f8fb;color:#102a43;padding:14px;}"
+                                     ".card{max-width:620px;margin:auto;background:#fff;border-radius:14px;padding:16px;box-shadow:0 8px 24px rgba(16,42,67,.1);}"
+                                     ".grid{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:10px;}"
+                                     ".item{background:#f1f5f9;border-radius:10px;padding:10px;}small{display:block;color:#627d98;}strong{font-size:16px;}"
+                                     ".notice{margin:10px 0;padding:10px;border-radius:10px;background:#fff3cd;color:#7c5700;}"
                                      ".notice-success{background:#d9fbe8;color:#166534;}"
                                      ".notice-error{background:#fde8e8;color:#991b1b;}"
-                                     "form{margin-top:16px;padding:16px;background:#f8fbfc;border-radius:12px;}label{display:block;margin:8px 0 6px;}input[type='text'],input[type='password'],input[type='number']{width:100%;padding:10px;border:1px solid #bcccdc;border-radius:10px;box-sizing:border-box;}button{margin-top:12px;padding:10px 16px;border:0;border-radius:10px;background:#0f766e;color:#fff;}details{margin-top:12px;padding:10px;border:1px solid #d9e2ec;border-radius:10px;background:#fff;}summary{cursor:pointer;font-weight:600;color:#334e68;}.checkbox-label{display:flex;align-items:center;gap:8px;margin-top:10px;}.checkbox-label input{width:auto;margin:0;}h2{margin-bottom:8px;}</style></head><body><div class='card'>");
-    append_text(buffer, size, &offset, "<h1>100L 鱼缸温控器 ESP-IDF</h1>");
-    append_fmt(buffer,
-               size,
-               &offset,
-               "<div class='entry'><strong>访问入口</strong><br>"
-               "1) 与设备在同一网络，浏览器打开 <code>http://%s/</code><br>"
-               "2) 若连不上，连接热点 <code>%s</code>（密码 <code>%s</code>）后打开 <code>http://192.168.4.1/</code>"
-               "</div>",
-               app_network_current_ip_address(),
-               g_runtime.wifi_ap_ssid[0] != '\0' ? g_runtime.wifi_ap_ssid : APP_AP_SSID_PREFIX,
-               APP_AP_PASSWORD);
+                                     "form{margin-top:12px;padding:12px;background:#f8fbfc;border-radius:10px;}label{display:block;margin:6px 0 4px;}input[type='text'],input[type='password'],input[type='number']{width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box;}button{margin-top:8px;padding:9px 14px;border:0;border-radius:8px;background:#0f766e;color:#fff;}details{margin-top:10px;padding:8px;border:1px solid #d9e2ec;border-radius:10px;background:#fff;}summary{cursor:pointer;font-weight:600;color:#334e68;}.checkbox-label{display:flex;align-items:center;gap:8px;margin-top:8px;}.checkbox-label input{width:auto;margin:0;}h1{margin:0 0 8px;}h2{margin:0 0 6px;font-size:16px;}p{margin:6px 0;color:#486581;}</style></head><body><div class='card'>");
+    append_text(buffer, size, &offset, "<h1>鱼缸温控器_x1nmu</h1>");
+    append_fmt(buffer, size, &offset, "<p>当前访问入口: http://%s/</p>", app_network_current_ip_address());
     append_text(buffer, size, &offset, "<div class='grid'>");
     append_fmt(buffer, size, &offset, "<div class='item'><small>状态</small><strong id='status-state'>%s</strong></div>", app_state_to_text(g_runtime.state));
-    append_fmt(buffer, size, &offset, "<div class='item'><small>故障</small><strong id='status-faultCode'>%s</strong></div>", g_runtime.last_fault_text);
     append_fmt(buffer, size, &offset, "<div class='item'><small>目标温度</small><strong id='status-setpoint'>%.1f C</strong></div>", g_runtime.setpoint);
     app_format_float(temp_buf, sizeof(temp_buf), g_runtime.control_temp, 2);
     append_fmt(buffer, size, &offset, "<div class='item'><small>控制温度</small><strong id='status-controlTemp'>%s C</strong></div>", temp_buf);
-    append_fmt(buffer, size, &offset, "<div class='item'><small>加热</small><strong id='status-heatOn'>%s</strong></div>", g_runtime.heat_on ? "ON" : "OFF");
-    append_fmt(buffer, size, &offset, "<div class='item'><small>制冷</small><strong id='status-coolOn'>%s</strong></div>", g_runtime.cool_on ? "ON" : "OFF");
-    append_fmt(buffer, size, &offset, "<div class='item'><small>蜂鸣器</small><strong id='status-buzzer'>%s</strong></div>", g_runtime.buzzer_enabled ? "ON" : "OFF");
+    append_fmt(buffer, size, &offset, "<div class='item'><small>故障</small><strong id='status-faultCode'>%s</strong></div>", app_fault_code_to_description(g_runtime.last_fault_code));
     append_fmt(buffer, size, &offset, "<div class='item'><small>网络</small><strong id='status-network'>%s / %s</strong></div>", app_network_current_wifi_label(), app_network_current_ip_address());
     append_text(buffer, size, &offset, "</div>");
     append_text(buffer, size, &offset, "<div id='action-notice'></div>");
     append_fmt(buffer,
                size,
                &offset,
-               "<form id='control-settings-form' method='post' action='/settings/control'><h2>目标温度</h2><label>设定值</label><input name='setpoint' type='number' min='20' max='32' step='0.1' value='%.1f'><details><summary>高级设置</summary><label>回差</label><input name='hysteresis' type='number' min='0.3' max='2.0' step='0.1' value='%.1f'><label>探头差值告警阈值</label><input name='sensorDiffAlarm' type='number' min='0.3' max='3.0' step='0.1' value='%.1f'><label class='checkbox-label'><input name='buzzerEnabled' type='checkbox' value='1'%s><span>启用蜂鸣器</span></label></details><button type='submit'>保存控制参数</button></form>",
+               "<form id='control-settings-form' method='post' action='/settings/control'><h2>快速设置</h2><label>目标温度</label><input name='setpoint' type='number' min='20' max='32' step='0.1' value='%.1f'><button type='submit'>保存</button><details><summary>温控高级选项</summary><label>回差</label><input name='hysteresis' type='number' min='0.3' max='2.0' step='0.1' value='%.1f'><label>探头差值告警阈值</label><input name='sensorDiffAlarm' type='number' min='0.3' max='3.0' step='0.1' value='%.1f'><label class='checkbox-label'><input name='buzzerEnabled' type='checkbox' value='1'%s><span>启用蜂鸣器</span></label></details></form>",
                g_runtime.setpoint,
                g_runtime.hysteresis,
                g_runtime.sensor_diff_alarm,
                g_runtime.buzzer_enabled ? " checked" : "");
+    append_text(buffer, size, &offset, "<details><summary>网络与维护</summary>");
     append_fmt(buffer, size, &offset, "<form id='wifi-settings-form' method='post' action='/settings/wifi'><h2>WiFi 设置</h2><label>WiFi SSID</label><input name='wifiSsid' type='text' maxlength='32' value='%s'>", g_runtime.wifi_ssid);
-    append_text(buffer, size, &offset, "<label>WiFi 密码</label><input name='wifiPassword' type='password' maxlength='64' value='' placeholder='留空表示不修改密码'>");
-    append_text(buffer, size, &offset, "<button type='submit'>保存 WiFi 并重连</button></form>");
-    append_text(buffer, size, &offset, "<form id='fault-reset-form' method='post' action='/faults/reset'><h2>故障复位</h2><button type='submit'>清除锁定故障</button></form>");
-    append_text(buffer, size, &offset, "<form id='stats-reset-form' method='post' action='/stats/reset'><h2>统计清零</h2><button type='submit'>清零累计统计</button></form>");
+    append_text(buffer, size, &offset, "<label>WiFi 密码</label><input name='wifiPassword' type='password' maxlength='64' value='' placeholder='留空表示不修改密码'><button type='submit'>保存 WiFi 并重连</button></form>");
+    append_text(buffer, size, &offset, "<form id='fault-reset-form' method='post' action='/faults/reset'><button type='submit'>清除锁定故障</button></form>");
+    append_text(buffer, size, &offset, "<form id='stats-reset-form' method='post' action='/stats/reset'><button type='submit'>统计清零</button></form>");
+    append_text(buffer, size, &offset, "<form id='factory-reset-form' method='post' action='/factory/reset'><button type='submit' style='background:#b91c1c;'>恢复出厂设置</button></form>");
+    append_text(buffer, size, &offset, "</details>");
     append_text(buffer, size, &offset,
                 "<script>"
                 "function fmtTemp(v,d){if(v===null||v===undefined||Number.isNaN(v)){return '--';}return Number(v).toFixed(d);}"
@@ -314,10 +302,11 @@ static void build_root_page(char *buffer, size_t size)
                 "function showNotice(msg,isErr){const host=document.getElementById('action-notice');if(!host)return;if(!msg){host.innerHTML='';return;}host.innerHTML='<div class=\\'notice '+(isErr?'notice-error':'notice-success')+'\\'>'+msg+'</div>';window.scrollTo({top:0,behavior:'smooth'});}"
                 "function setText(id,val){const el=document.getElementById(id);if(el){el.textContent=val;}}"
                 "let reconnectTimer=null;let reconnectTry=0;"
-                "async function refreshStatus(){try{const r=await fetch('/status',{cache:'no-store'});if(!r.ok)return null;const s=await r.json();setText('status-state',s.state||'--');setText('status-faultCode',s.faultCode||'--');setText('status-setpoint',(s.setpoint!=null?Number(s.setpoint).toFixed(1):'--')+' C');setText('status-controlTemp',fmtTemp(s.controlTemp,2)+' C');setText('status-heatOn',boolText(!!s.heatOn));setText('status-coolOn',boolText(!!s.coolOn));setText('status-buzzer',boolText(!!s.buzzerEnabled));setText('status-network',(s.wifiSsid||'--')+' / '+(s.wifiIp||'--'));return s;}catch(e){console.log(e);return null;}}"
-                "function startWifiReconnectMonitor(){if(reconnectTimer){clearInterval(reconnectTimer);}reconnectTry=0;reconnectTimer=setInterval(async()=>{reconnectTry++;const s=await refreshStatus();if(s&&(s.wifiConnected||s.wifiApMode)){clearInterval(reconnectTimer);reconnectTimer=null;showNotice('网络已更新，页面即将刷新。',false);setTimeout(()=>{window.location.reload();},800);return;}if(reconnectTry>=20){clearInterval(reconnectTimer);reconnectTimer=null;showNotice('仍在重连，请按页面入口提示重新访问。',true);}},1000);}"
-                "async function submitFormAjax(form){const data=new URLSearchParams(new FormData(form));const url=form.action+(form.action.includes('?')?'&':'?')+'ajax=1';try{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:data.toString()});let msg='操作成功';let ok=r.ok;try{const j=await r.json();if(j&&j.message){msg=j.message;}if(j&&j.ok===false){ok=false;}}catch(_){}showNotice(msg,!ok);if(ok){await refreshStatus();if(form.id==='wifi-settings-form'){showNotice(msg+' 设备正在重连WiFi，请稍候...',false);startWifiReconnectMonitor();}}}catch(e){showNotice('网络异常，请重试',true);}}"
-                "['control-settings-form','wifi-settings-form','fault-reset-form','stats-reset-form'].forEach(id=>{const f=document.getElementById(id);if(f){f.addEventListener('submit',function(ev){ev.preventDefault();submitFormAjax(f);});}});"
+                "async function refreshStatus(){try{const r=await fetch('/status',{cache:'no-store'});if(!r.ok)return null;const s=await r.json();setText('status-state',s.state||'--');setText('status-faultCode',s.faultDescription||s.faultCode||'--');setText('status-setpoint',(s.setpoint!=null?Number(s.setpoint).toFixed(1):'--')+' C');setText('status-controlTemp',fmtTemp(s.controlTemp,2)+' C');setText('status-heatOn',boolText(!!s.heatOn));setText('status-coolOn',boolText(!!s.coolOn));setText('status-buzzer',boolText(!!s.buzzerEnabled));setText('status-network',(s.wifiSsid||'--')+' / '+(s.wifiIp||'--'));return s;}catch(e){console.log(e);return null;}}"
+                "function showFactoryResetAccessHint(s){const ssid=(s&&s.wifiSsid)?s.wifiSsid:'FishTankCtrl-Setup';const ip=(s&&s.wifiIp&&s.wifiIp!=='--')?s.wifiIp:'192.168.4.1';showNotice('恢复出厂已完成。请连接热点 '+ssid+'，然后访问 http://'+ip+'/',false);}"
+                "function startWifiReconnectMonitor(action){if(reconnectTimer){clearInterval(reconnectTimer);}reconnectTry=0;reconnectTimer=setInterval(async()=>{reconnectTry++;const s=await refreshStatus();if(s&&(s.wifiConnected||s.wifiApMode)){clearInterval(reconnectTimer);reconnectTimer=null;if(action==='factory-reset'){showFactoryResetAccessHint(s);}else{showNotice('网络已更新，页面即将刷新。',false);}setTimeout(()=>{window.location.reload();},1000);return;}if(reconnectTry>=20){clearInterval(reconnectTimer);reconnectTimer=null;showNotice('仍在重连，请按页面入口提示重新访问。',true);}},1000);}"
+                "async function submitFormAjax(form){if(form.id==='factory-reset-form'&&!window.confirm('确认恢复出厂设置？这会清除WiFi、温控参数和故障统计。')){return;}const data=new URLSearchParams(new FormData(form));const url=form.action+(form.action.includes('?')?'&':'?')+'ajax=1';try{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:data.toString()});let msg='操作成功';let ok=r.ok;try{const j=await r.json();if(j&&j.message){msg=j.message;}if(j&&j.ok===false){ok=false;}}catch(_){}showNotice(msg,!ok);if(ok){await refreshStatus();if(form.id==='wifi-settings-form'){showNotice(msg+' 设备正在重连WiFi，请稍候...',false);startWifiReconnectMonitor('wifi');}else if(form.id==='factory-reset-form'){showNotice(msg+' 正在恢复AP入口，请稍候...',false);startWifiReconnectMonitor('factory-reset');}}}catch(e){showNotice('网络异常，请重试',true);}}"
+                "['control-settings-form','wifi-settings-form','fault-reset-form','stats-reset-form','factory-reset-form'].forEach(id=>{const f=document.getElementById(id);if(f){f.addEventListener('submit',function(ev){ev.preventDefault();submitFormAjax(f);});}});"
                 "refreshStatus();setInterval(()=>{refreshStatus();},5000);"
                 "</script>");
     append_text(buffer, size, &offset, "</div></body></html>");
@@ -353,15 +342,23 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 
 static esp_err_t status_get_handler(httpd_req_t *req)
 {
-    char json[2048];
+    char *json = (char *)calloc(1, 2048);
+    esp_err_t err;
+
+    if (json == NULL) {
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "alloc failed");
+    }
 
     if (!runtime_try_lock(pdMS_TO_TICKS(100))) {
+        free(json);
         return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "runtime busy");
     }
-    build_status_json(json, sizeof(json));
+    build_status_json(json, 2048);
     runtime_unlock();
     httpd_resp_set_type(req, "application/json");
-    return httpd_resp_send(req, json, HTTPD_RESP_USE_STRLEN);
+    err = httpd_resp_send(req, json, HTTPD_RESP_USE_STRLEN);
+    free(json);
+    return err;
 }
 
 static esp_err_t settings_control_post_handler(httpd_req_t *req)
@@ -511,9 +508,20 @@ static esp_err_t stats_reset_post_handler(httpd_req_t *req)
     return send_action_response(req, 200, "运行统计已清零。", false);
 }
 
+static esp_err_t factory_reset_post_handler(httpd_req_t *req)
+{
+    app_command_t cmd = { .type = APP_CMD_FACTORY_RESET };
+    if (app_core_post_command(&cmd, pdMS_TO_TICKS(100)) != ESP_OK) {
+        return send_action_response(req, 500, "系统忙，请稍后重试。", true);
+    }
+    s_wifi_reconnect_not_before_ms = app_millis() + APP_WIFI_SAVE_RECONNECT_DELAY_MS;
+    return send_action_response(req, 200, "已恢复出厂设置，系统正在重置网络。", false);
+}
+
 static esp_err_t start_web_server(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.stack_size = 8192;
     config.max_uri_handlers = 12;
     httpd_uri_t root = { .uri = "/", .method = HTTP_GET, .handler = root_get_handler, .user_ctx = NULL };
     httpd_uri_t status = { .uri = "/status", .method = HTTP_GET, .handler = status_get_handler, .user_ctx = NULL };
@@ -523,6 +531,7 @@ static esp_err_t start_web_server(void)
     httpd_uri_t settings_wifi = { .uri = "/settings/wifi", .method = HTTP_POST, .handler = settings_wifi_post_handler, .user_ctx = NULL };
     httpd_uri_t fault_reset = { .uri = "/faults/reset", .method = HTTP_POST, .handler = fault_reset_post_handler, .user_ctx = NULL };
     httpd_uri_t stats_reset = { .uri = "/stats/reset", .method = HTTP_POST, .handler = stats_reset_post_handler, .user_ctx = NULL };
+    httpd_uri_t factory_reset = { .uri = "/factory/reset", .method = HTTP_POST, .handler = factory_reset_post_handler, .user_ctx = NULL };
 
     ESP_RETURN_ON_ERROR(httpd_start(&s_http_server, &config), TAG, "httpd start failed");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(s_http_server, &root), TAG, "root handler failed");
@@ -533,6 +542,7 @@ static esp_err_t start_web_server(void)
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(s_http_server, &settings_wifi), TAG, "settings wifi handler failed");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(s_http_server, &fault_reset), TAG, "fault reset handler failed");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(s_http_server, &stats_reset), TAG, "stats reset handler failed");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(s_http_server, &factory_reset), TAG, "factory reset handler failed");
     app_log_event("Web server started, open http://%s/", app_network_current_ip_address());
     return ESP_OK;
 }
@@ -552,6 +562,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 {
     (void)arg;
     (void)event_data;
+    wifi_mode_t mode = WIFI_MODE_NULL;
 
     if (!runtime_try_lock(pdMS_TO_TICKS(50))) {
         ESP_LOGW(TAG, "runtime busy in wifi_event_handler");
@@ -565,9 +576,14 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         }
         ESP_LOGW(TAG, "WiFi disconnected");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        if (esp_wifi_get_mode(&mode) != ESP_OK) {
+            mode = WIFI_MODE_STA;
+        }
         g_runtime.wifi_connected = true;
-        g_runtime.wifi_ap_mode = false;
-        update_ip_text_from_netif(s_sta_netif);
+        g_runtime.wifi_ap_mode = (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA);
+        if (!g_runtime.wifi_ap_mode) {
+            update_ip_text_from_netif(s_sta_netif);
+        }
         app_log_event("WiFi connected: %s", g_runtime.ip_text);
         app_log_event("Web entry: http://%s/", g_runtime.ip_text);
     }
@@ -618,9 +634,11 @@ static esp_err_t start_config_ap(void)
 esp_err_t app_network_connect_wifi(bool force_reconnect)
 {
     wifi_config_t wifi_config = {0};
+    wifi_mode_t wifi_mode = WIFI_MODE_NULL;
     char ssid[APP_WIFI_SSID_MAX_LEN];
     char password[APP_WIFI_PASSWORD_MAX_LEN];
     bool no_sta_credentials = false;
+    bool keep_ap_running = false;
 
     if (!runtime_try_lock(pdMS_TO_TICKS(200))) {
         return ESP_ERR_TIMEOUT;
@@ -647,12 +665,15 @@ esp_err_t app_network_connect_wifi(bool force_reconnect)
         no_sta_credentials = true;
     }
 
+    keep_ap_running = g_runtime.wifi_ap_mode;
     g_runtime.wifi_reconnect_requested = false;
     g_runtime.last_wifi_retry_ms = app_millis();
     g_runtime.wifi_connected = false;
-    g_runtime.wifi_ap_mode = false;
-    g_runtime.wifi_ap_ssid[0] = '\0';
-    strlcpy(g_runtime.ip_text, "--", sizeof(g_runtime.ip_text));
+    if (!keep_ap_running) {
+        g_runtime.wifi_ap_mode = false;
+        g_runtime.wifi_ap_ssid[0] = '\0';
+        strlcpy(g_runtime.ip_text, "--", sizeof(g_runtime.ip_text));
+    }
     s_wifi_connect_pending = false;
     runtime_unlock();
 
@@ -665,10 +686,16 @@ esp_err_t app_network_connect_wifi(bool force_reconnect)
     strlcpy((char *)wifi_config.sta.password, password, sizeof(wifi_config.sta.password));
     wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
 
-    ESP_RETURN_ON_ERROR(esp_wifi_stop(), TAG, "wifi stop failed");
-    ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_STA), TAG, "set STA mode failed");
-    ESP_RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_STA, &wifi_config), TAG, "set STA config failed");
-    ESP_RETURN_ON_ERROR(esp_wifi_start(), TAG, "wifi start failed");
+    ESP_RETURN_ON_ERROR(esp_wifi_get_mode(&wifi_mode), TAG, "get wifi mode failed");
+    if (keep_ap_running || wifi_mode == WIFI_MODE_AP || wifi_mode == WIFI_MODE_APSTA) {
+        ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_APSTA), TAG, "set APSTA mode failed");
+        ESP_RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_STA, &wifi_config), TAG, "set STA config failed");
+    } else {
+        ESP_RETURN_ON_ERROR(esp_wifi_stop(), TAG, "wifi stop failed");
+        ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_STA), TAG, "set STA mode failed");
+        ESP_RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_STA, &wifi_config), TAG, "set STA config failed");
+        ESP_RETURN_ON_ERROR(esp_wifi_start(), TAG, "wifi start failed");
+    }
     ESP_RETURN_ON_ERROR(esp_wifi_connect(), TAG, "wifi connect failed");
 
     app_log_event("WiFi connecting to %s", ssid);
@@ -760,12 +787,18 @@ void app_network_maintain(void)
     }
 
     if (g_runtime.wifi_ap_mode) {
-        should_retry_sta = g_runtime.wifi_ssid[0] != '\0' &&
-                           app_network_ap_client_count() == 0 &&
-                           (app_millis() - g_runtime.wifi_ap_started_ms) >= APP_WIFI_AP_RETRY_INTERVAL_MS;
-        if (should_retry_sta) {
-            app_log_event("AP idle timeout reached, retrying STA connection");
+        if (g_runtime.wifi_reconnect_requested && app_millis() >= s_wifi_reconnect_not_before_ms) {
+            app_log_event("WiFi reconnect requested, leaving AP and retrying STA");
             need_reconnect = true;
+        } else {
+            should_retry_sta = !g_runtime.wifi_connected &&
+                               g_runtime.wifi_ssid[0] != '\0' &&
+                               app_network_ap_client_count() == 0 &&
+                               (app_millis() - g_runtime.wifi_ap_started_ms) >= APP_WIFI_AP_RETRY_INTERVAL_MS;
+            if (should_retry_sta) {
+                app_log_event("AP idle timeout reached, retrying STA connection");
+                need_reconnect = true;
+            }
         }
     } else if ((g_runtime.wifi_reconnect_requested && app_millis() >= s_wifi_reconnect_not_before_ms) ||
                (!g_runtime.wifi_connected && (app_millis() - g_runtime.last_wifi_retry_ms) >= APP_WIFI_RETRY_INTERVAL_MS)) {

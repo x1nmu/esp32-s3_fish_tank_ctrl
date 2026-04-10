@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>软件架构设计（ESP-IDF）</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --text: #0f172a;
+      --sub: #475569;
+      --line: #dbe3ee;
+      --accent: #0f766e;
+      --codebg: #0b1020;
+      --codefg: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.65;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 28px auto;
+      padding: 0 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    }
+    h1, h2, h3 { margin: 0 0 10px; }
+    h1 { font-size: 28px; }
+    h2 { font-size: 22px; color: var(--accent); margin-top: 6px; }
+    h3 { font-size: 18px; margin-top: 14px; }
+    p, li { color: var(--text); }
+    .sub { color: var(--sub); }
+    code {
+      background: #eef2f7;
+      border: 1px solid #dbe3ee;
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-family: Consolas, "Courier New", monospace;
+    }
+    pre {
+      background: var(--codebg);
+      color: var(--codefg);
+      padding: 14px;
+      border-radius: 10px;
+      overflow: auto;
+      border: 1px solid #1e293b;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f1f5f9; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .tag {
+      display: inline-block;
+      border: 1px solid #99f6e4;
+      background: #f0fdfa;
+      color: #115e59;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 12px;
+      margin-right: 6px;
+    }
+    .warn {
+      border-left: 4px solid #f59e0b;
+      background: #fffbeb;
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      if (window.mermaid) {
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+      }
+    });
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>软件架构设计（ESP-IDF）</h1>
+      <p class="sub">项目：鱼缸温控器_x1nmu | 目标平台：ESP32-S3 + ESP-IDF v6.0</p>
+      <span class="tag">多任务</span>
+      <span class="tag">温控状态机</span>
+      <span class="tag">WiFi STA/AP</span>
+      <span class="tag">Web + OLED</span>
+    </div>
+
+    <div class="card">
+      <h2>1. 总体架构</h2>
+      <p>架构采用“共享运行态 + 命令队列 + 周期任务协作”的模式：控制核心统一维护 <code>g_runtime</code>，网络和页面通过命令队列下发动作，采样任务驱动状态机闭环。</p>
+      <div class="mermaid">
+flowchart TB
+    A[main.c\n初始化与任务创建] --> B[app_core\n控制中枢]
+    A --> C[app_network\n网络与网页]
+    B --> D[g_runtime\n共享运行态]
+    C --> D
+    E[app_oled\n显示渲染] --> D
+    F[Web/按键输入] --> G[s_command_queue]
+    G --> B
+    H[DS18B20采样] --> B
+    B --> I[状态机与输出控制]
+    I --> J[GPIO继电器]
+    B --> K[NVS持久化]
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. 任务清单</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>任务</th>
+            <th>优先级</th>
+            <th>触发周期</th>
+            <th>主要职责</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>app_sample</td>
+            <td>8</td>
+            <td>50ms（固定节拍）</td>
+            <td>采样、温度有效性判定、状态机更新</td>
+          </tr>
+          <tr>
+            <td>app_ctrl</td>
+            <td>7</td>
+            <td>20ms</td>
+            <td>命令消费、按键处理、蜂鸣器、参数延迟保存</td>
+          </tr>
+          <tr>
+            <td>app_net</td>
+            <td>6</td>
+            <td>200ms</td>
+            <td>WiFi 维护、重连策略、AP/STA 切换</td>
+          </tr>
+          <tr>
+            <td>app_disp</td>
+            <td>5</td>
+            <td>50ms 轮询（内部66ms节流）</td>
+            <td>OLED 状态刷新、差分更新</td>
+          </tr>
+          <tr>
+            <td>app_log</td>
+            <td>4</td>
+            <td>1s轮询（内部10s输出）</td>
+            <td>运行日志与诊断输出</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="sub">说明：当前通过 <code>xTaskCreate</code> 创建任务，未绑核，任务由 SMP 调度器在 CPU0/CPU1 动态分配。</p>
+    </div>
+
+    <div class="card">
+      <h2>3. 各任务详细流程（含 UML 活动图）</h2>
+
+      <h3>3.1 app_sample（采样与状态机主时钟）</h3>
+      <ol>
+        <li>读取双探头温度，进行跳变检测、上下限有效性判定、滤波。</li>
+        <li>在锁内更新控制温度与故障标志。</li>
+        <li>调用状态机，决定 HEAT/COOL/IDLE/ALARM/FAULT_STOP。</li>
+        <li>使用 <code>vTaskDelayUntil</code> 保证 50ms 固定节拍。</li>
+      </ol>
+      <div class="mermaid">
+flowchart TD
+    S0([Start]) --> S1[update_sensors()]
+    S1 --> S2{采样有效?}
+    S2 -- 否 --> S3[更新 fail_count/invalid]
+    S2 -- 是 --> S4[更新温度滤波与control_temp]
+    S3 --> S5[update_state_machine()]
+    S4 --> S5
+    S5 --> S6[输出控制决策]
+    S6 --> S7[vTaskDelayUntil(50ms)]
+    S7 --> S1
+      </div>
+      <pre>@startuml
+start
+:update_sensors();
+if (采样有效?) then (是)
+  :更新温度滤波与control_temp;
+else (否)
+  :更新 fail_count / invalid;
+endif
+:update_state_machine();
+:输出控制决策;
+:vTaskDelayUntil(50ms);
+stop
+@enduml</pre>
+
+      <h3>3.2 app_ctrl（控制面动作执行器）</h3>
+      <ol>
+        <li>消费命令队列：参数更新、清故障、清统计、恢复出厂。</li>
+        <li>扫描按键：短按、长按、组合键维护动作。</li>
+        <li>处理蜂鸣器脉冲到期关闭。</li>
+        <li>到达保存窗口后写入 NVS。</li>
+      </ol>
+      <div class="mermaid">
+flowchart TD
+    C0([Start]) --> C1[lock runtime]
+    C1 --> C2[process_pending_commands()]
+    C2 --> C3[handle_buttons()]
+    C3 --> C4[process_buzzer()]
+    C4 --> C5[save_settings_if_needed()]
+    C5 --> C6[unlock runtime]
+    C6 --> C7[vTaskDelay(20ms)]
+    C7 --> C1
+      </div>
+      <pre>@startuml
+    start
+    :lock runtime;
+    :process_pending_commands();
+    :handle_buttons();
+    :process_buzzer();
+    :save_settings_if_needed();
+    :unlock runtime;
+    :vTaskDelay(20ms);
+    stop
+    @enduml</pre>
+
+      <h3>3.3 app_net（网络维护任务）</h3>
+      <ol>
+        <li>检查是否处于连接等待态；超时则切 AP。</li>
+        <li>在 AP 模式下判断是否满足回切 STA 条件。</li>
+        <li>在 STA 断连且达到重试间隔时发起重连。</li>
+        <li>与 WiFi/IP 事件回调协作更新网络状态。</li>
+      </ol>
+      <div class="mermaid">
+flowchart TD
+    N0([Start]) --> N1{s_wifi_connect_pending?}
+    N1 -- 是 --> N2{已连接?}
+    N2 -- 是 --> N7[清 pending]
+    N2 -- 否 --> N3{超时>=12s?}
+    N3 -- 是 --> N4[切AP模式]
+    N3 -- 否 --> N8[vTaskDelay(200ms)]
+    N1 -- 否 --> N5{需重连?}
+    N5 -- 是 --> N6[app_network_connect_wifi(true)]
+    N5 -- 否 --> N8
+    N4 --> N8
+    N6 --> N8
+    N7 --> N8
+    N8 --> N1
+      </div>
+      <pre>@startuml
+start
+if (s_wifi_connect_pending?) then (是)
+  if (已连接?) then (是)
+    :清pending;
+  else (否)
+    if (超时>=12s?) then (是)
+      :切AP模式;
+    endif
+  endif
+else (否)
+  if (需重连?) then (是)
+    :app_network_connect_wifi(true);
+  endif
+endif
+:vTaskDelay(200ms);
+stop
+@enduml</pre>
+
+      <h3>3.4 app_disp（显示任务）</h3>
+      <ol>
+        <li>检查 OLED 就绪。</li>
+        <li>检查刷新节流周期（66ms）。</li>
+        <li>构建显示快照，若与上次一致则不刷新。</li>
+        <li>调用渲染函数显示“常态极简/故障详情”两态页面。</li>
+      </ol>
+      <div class="mermaid">
+flowchart TD
+    D0([Start]) --> D1{OLED ready?}
+    D1 -- 否 --> D6[vTaskDelay(50ms)]
+    D1 -- 是 --> D2{到刷新周期?}
+    D2 -- 否 --> D6
+    D2 -- 是 --> D3{快照变化?}
+    D3 -- 否 --> D6
+    D3 -- 是 --> D4[app_oled_render_status()]
+    D4 --> D5[记录last snapshot]
+    D5 --> D6
+    D6 --> D1
+      </div>
+      <pre>@startuml
+start
+if (OLED ready?) then (是)
+  if (到刷新周期?) then (是)
+    if (快照变化?) then (是)
+      :app_oled_render_status();
+      :记录last snapshot;
+    endif
+  endif
+endif
+:vTaskDelay(50ms);
+stop
+@enduml</pre>
+
+      <h3>3.5 app_log（诊断日志任务）</h3>
+      <ol>
+        <li>每 1s 被调度一次。</li>
+        <li>若未达到日志周期（10s）则直接返回。</li>
+        <li>输出状态、温度、网络、采样周期等诊断字段。</li>
+      </ol>
+      <div class="mermaid">
+flowchart TD
+    L0([Start]) --> L1{距上次>=10s?}
+    L1 -- 否 --> L3[vTaskDelay(1000ms)]
+    L1 -- 是 --> L2[打印周期状态日志]
+    L2 --> L3
+    L3 --> L1
+      </div>
+      <pre>@startuml
+start
+if (距上次>=10s?) then (是)
+  :打印周期状态日志;
+endif
+:vTaskDelay(1000ms);
+stop
+@enduml</pre>
+    </div>
+
+    <div class="card">
+      <h2>4. 任务间调度与协作</h2>
+      <div class="mermaid">
+sequenceDiagram
+    participant Web as HTTP Handler
+    participant Q as s_command_queue
+    participant Ctrl as app_ctrl
+    participant Sample as app_sample
+    participant Core as g_runtime/app_core
+    participant Net as app_net
+    participant Disp as app_disp
+
+    Web->>Q: app_core_post_command(cmd)
+    Ctrl->>Q: xQueueReceive()
+    Ctrl->>Core: 执行命令/按键/保存
+    Sample->>Core: 采样+状态机(50ms)
+    Net->>Core: 维护连接状态(200ms)
+    Disp->>Core: 读取快照并显示(50ms)
+      </div>
+      <p class="warn">并发关键点：多个任务和事件回调都访问 <code>g_runtime</code>，统一依赖互斥锁保护，避免写-写冲突与读到中间态。</p>
+    </div>
+
+    <div class="card">
+      <h2>5. 可选优化建议</h2>
+      <ol>
+        <li>增加任务执行耗时/锁等待时间的统计日志，定位抖动源。</li>
+        <li>按“控制链”和“网络链”尝试绑核，对比延迟与稳定性。</li>
+        <li>将运行态拆分为控制域与网络域，降低单锁争用。</li>
+      </ol>
+      <p class="sub">建议先做观测再优化，避免过早复杂化。</p>
+    </div>
+  </div>
+</body>
+</html>
